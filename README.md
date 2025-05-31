@@ -177,30 +177,30 @@ You can use the following commands with the build script from your project's roo
 
 These commands can be mixed and matched. For example, to clean and then build in release mode:
 ```sh
-jai build.jai - clean -release
+jai build.jai - clean release
 ```
 Or to clean and build in debug mode:
 ```sh
-jai build.jai - clean -build
+jai build.jai - clean build
 ```
 
 ### Running the Sample Program
 
-Running any of the build commands (e.g., `jai build.jai -build`) will compile the sample program located in `src/sample/sample.jai`. After a successful build, you can execute the sample program from the project's root directory.
+Running any of the build commands (e.g., `jai build.jai - build`) will compile the sample program located in `src/sample/sample.jai`. After a successful build, you can execute the sample program from the project's root directory.
 
 **Examples:**
 
 -   Display help for the sample program:
     ```sh
-    ./sample --help
+    ./target/sample/sample --help
     ```
 -   Run the `greet` subcommand:
     ```sh
-    ./sample greet World
+    ./target/sample/sample greet World
     ```
--   Run the `count` subcommand (assuming it exists in the sample and is defined similarly):
+-   Run the `count` subcommand:
     ```sh
-    ./sample count 10
+    ./target/sample/sample count 10
     ```
 
 ## License

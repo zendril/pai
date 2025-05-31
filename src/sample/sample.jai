@@ -16,13 +16,13 @@ main :: () {
     
     CountContext :: struct {
         verbose: *bool;
-        count: *int;
+        count: *s64;
     }
     
     // Define variables to store parsed values
     verbose := false;
     name: string;
-    count: int;
+    count: s64;
     
     // Define the root command
     root_cmd: Command;
@@ -35,6 +35,7 @@ main :: () {
     verbose_option.short_name = "v";
     verbose_option.description = "Enable verbose output";
     verbose_option.option_type = type_of(bool);
+    verbose_option.type_name = "bool";
     verbose_option.required = false;
     verbose_option.value = *verbose;
     array_add(*root_cmd.options, verbose_option);
@@ -62,6 +63,7 @@ main :: () {
     name_arg.name = "name";
     name_arg.description = "The user's name";
     name_arg.arg_type = type_of(string);
+    name_arg.type_name = "string";
     name_arg.required = true;
     name_arg.value = *name;
     array_add(*greet_cmd.arguments, name_arg);
@@ -89,9 +91,12 @@ main :: () {
     count_arg: Argument;
     count_arg.name = "count";
     count_arg.description = "The number to count to";
-    count_arg.arg_type = type_of(int);
+    
+    count_arg.arg_type = type_of(s64);
+    count_arg.type_name = "s64";  // Set the type name explicitly
     count_arg.required = true;
     count_arg.value = *count;
+    
     array_add(*count_cmd.arguments, count_arg);
     
     // Create context for the count command
@@ -103,8 +108,10 @@ main :: () {
     // Define the count command's action
     count_cmd.action = (ctx: *void) {
         ctx_data := cast(*CountContext)ctx;
-        print("Counting to %:\n", ctx_data.count.*);
-        for i: 1..ctx_data.count.* {
+        count_value := ctx_data.count.*;
+        
+        print("Counting to %:\n", count_value);
+        for i: 1..count_value {
             print("%\n", i);
         }
         if ctx_data.verbose.* print("Counting with verbose mode enabled.\n");
