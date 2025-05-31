@@ -29,7 +29,9 @@ main :: () {
     root_cmd.name = "sample";
     root_cmd.description = "A sample CLI application using the Pai library";
     
-    // Add a verbose option to the root command
+    // No need to initialize arrays - they're automatically initialized as empty
+    
+    // Add a verbose option as a global option
     verbose_option: Option;
     verbose_option.name = "verbose";
     verbose_option.short_name = "v";
@@ -38,7 +40,7 @@ main :: () {
     verbose_option.type_name = "bool";
     verbose_option.required = false;
     verbose_option.value = *verbose;
-    array_add(*root_cmd.options, verbose_option);
+    array_add(*root_cmd.global_options, verbose_option);
     
     // Create context for the root command
     root_context := New(RootContext);
@@ -57,6 +59,8 @@ main :: () {
     greet_cmd.name = "greet";
     greet_cmd.short_name = "g";
     greet_cmd.description = "Greet a user";
+    
+    // No need to initialize arrays - they're automatically initialized as empty
     
     // Add a name argument to the greet command
     name_arg: Argument;
@@ -86,6 +90,8 @@ main :: () {
     count_cmd.name = "count";
     count_cmd.short_name = "c";
     count_cmd.description = "Count to a number";
+    
+    // No need to initialize arrays - they're automatically initialized as empty
     
     // Add a count argument to the count command
     count_arg: Argument;
@@ -117,9 +123,16 @@ main :: () {
         if ctx_data.verbose.* print("Counting with verbose mode enabled.\n");
     };
     
-    // Add the subcommands to the root command
+    // Add the subcommands to the root command and propagate global options
     array_add(*root_cmd.subcommands, greet_cmd);
     array_add(*root_cmd.subcommands, count_cmd);
+    
+    // Propagate global options to subcommands
+    for * subcommand: root_cmd.subcommands {
+        for option: root_cmd.global_options {
+            array_add(*subcommand.global_options, option);
+        }
+    }
     
     // Parse the command-line arguments
     result := parse_args(*root_cmd);

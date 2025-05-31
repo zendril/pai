@@ -9,6 +9,7 @@ Command :: struct {
     arguments: [..]Argument;
     subcommands: [..]Command;
     options: [..]Option;
+    global_options: [..]Option;  // Options that apply to all subcommands
     action: (*void) -> ();
     ctx_data: *void;  // Pointer to context data for the action
 }
@@ -88,74 +89,74 @@ parse_args :: (command: *Command, args: []string = .[]) -> ParseResult {
         
         if subcommand_found continue;
         
-        // Check if it's an option
-        if starts_with(arg, "--") {
-            option_name := slice(arg, 2, arg.count - 2);
-            
-            // Handle the help option
-            if option_name == "help" {
-                print_help(current_command);
-                result.help_shown = true;
-                return result;
-            }
-            
+        // Check if it's an option (either long or short form)
+        if starts_with(arg, "--") || (starts_with(arg, "-") && arg.count > 1) {
             option_found := false;
             
-            for * option: current_command.options {
-                if option_name == option.name {
-                    option_found = true;
-                    
-                    if option.type_name == "bool" {
-                        // Boolean flag
-                        (cast(*bool)option.value).* = true;
-                    } else {
-                        // Option with value
-                        if current_index >= local_args.count {
-                            result.success = false;
-                            result.error_message = tprint("Option % requires a value", option.name);
-                            return result;
-                        }
+            // Handle long options (--option)
+            if starts_with(arg, "--") {
+                option_name := slice(arg, 2, arg.count - 2);
+                
+                // Handle the help option
+                if option_name == "help" {
+                    print_help(current_command);
+                    result.help_shown = true;
+                    return result;
+                }
+                
+                // Check current command options
+                for * option: current_command.options {
+                    if option_name == option.name {
+                        option_found = true;
                         
-                        value_str := local_args[current_index];
-                        current_index += 1;
-                        
-                        if option.type_name == "string" {
-                            (cast(*string)option.value).* = value_str;
-                        } else if option.type_name == "int" || option.type_name == "s64" {
-                            value, success := string_to_int(value_str);
-                            if !success {
+                        if option.type_name == "bool" {
+                            // Boolean flag
+                            (cast(*bool)option.value).* = true;
+                        } else {
+                            // Option with value
+                            if current_index >= local_args.count {
                                 result.success = false;
-                                result.error_message = tprint("Failed to parse % as int", value_str);
+                                result.error_message = tprint("Option % requires a value", option.name);
                                 return result;
                             }
                             
-                            if option.type_name == "int" {
-                                (cast(*int)option.value).* = value;
-                            } else { // s64
-                                (cast(*s64)option.value).* = value;
+                            value_str := local_args[current_index];
+                            current_index += 1;
+                            
+                            if option.type_name == "string" {
+                                (cast(*string)option.value).* = value_str;
+                            } else if option.type_name == "int" || option.type_name == "s64" {
+                                value, success := string_to_int(value_str);
+                                if !success {
+                                    result.success = false;
+                                    result.error_message = tprint("Failed to parse % as int", value_str);
+                                    return result;
+                                }
+                                
+                                if option.type_name == "int" {
+                                    (cast(*int)option.value).* = value;
+                                } else { // s64
+                                    (cast(*s64)option.value).* = value;
+                                }
+                            } else if option.type_name == "float" {
+                                value, success := string_to_float(value_str);
+                                if !success {
+                                    result.success = false;
+                                    result.error_message = tprint("Failed to parse % as float", value_str);
+                                    return result;
+                                }
+                                (cast(*float)option.value).* = value;
                             }
-                        } else if option.type_name == "float" {
-                            value, success := string_to_float(value_str);
-                            if !success {
-                                result.success = false;
-                                result.error_message = tprint("Failed to parse % as float", value_str);
-                                return result;
-                            }
-                            (cast(*float)option.value).* = value;
                         }
+                        
+                        break;
                     }
-                    
-                    break;
                 }
-            }
-            
-            if !option_found {
-                // Check for short option
-                if !starts_with(arg, "--") && starts_with(arg, "-") && arg.count > 1 {
-                    short_option_name := slice(arg, 1, arg.count - 1);
-                    
-                    for * option: current_command.options {
-                        if short_option_name == option.short_name {
+                
+                // If not found in current command options, check global options
+                if !option_found {
+                    for * option: current_command.global_options {
+                        if option_name == option.name {
                             option_found = true;
                             
                             if option.type_name == "bool" {
@@ -165,7 +166,7 @@ parse_args :: (command: *Command, args: []string = .[]) -> ParseResult {
                                 // Option with value
                                 if current_index >= local_args.count {
                                     result.success = false;
-                                    result.error_message = tprint("Option % requires a value", option.short_name);
+                                    result.error_message = tprint("Option % requires a value", option.name);
                                     return result;
                                 }
                                 
@@ -202,8 +203,109 @@ parse_args :: (command: *Command, args: []string = .[]) -> ParseResult {
                         }
                     }
                 }
+            } else if starts_with(arg, "-") { // Handle short options (-o)
+                short_option_name := slice(arg, 1, arg.count - 1);
+                
+                // Check current command options
+                for * option: current_command.options {
+                    if short_option_name == option.short_name {
+                        option_found = true;
+                        
+                        if option.type_name == "bool" {
+                            // Boolean flag
+                            (cast(*bool)option.value).* = true;
+                        } else {
+                            // Option with value
+                            if current_index >= local_args.count {
+                                result.success = false;
+                                result.error_message = tprint("Option % requires a value", option.short_name);
+                                return result;
+                            }
+                            
+                            value_str := local_args[current_index];
+                            current_index += 1;
+                            
+                            if option.type_name == "string" {
+                                (cast(*string)option.value).* = value_str;
+                            } else if option.type_name == "int" || option.type_name == "s64" {
+                                value, success := string_to_int(value_str);
+                                if !success {
+                                    result.success = false;
+                                    result.error_message = tprint("Failed to parse % as int", value_str);
+                                    return result;
+                                }
+                                
+                                if option.type_name == "int" {
+                                    (cast(*int)option.value).* = value;
+                                } else { // s64
+                                    (cast(*s64)option.value).* = value;
+                                }
+                            } else if option.type_name == "float" {
+                                value, success := string_to_float(value_str);
+                                if !success {
+                                    result.success = false;
+                                    result.error_message = tprint("Failed to parse % as float", value_str);
+                                    return result;
+                                }
+                                (cast(*float)option.value).* = value;
+                            }
+                        }
+                        
+                        break;
+                    }
+                }
+                
+                // Check global options
+                for * option: current_command.global_options {
+                    if short_option_name == option.short_name {
+                        option_found = true;
+                        
+                        if option.type_name == "bool" {
+                            // Boolean flag
+                            (cast(*bool)option.value).* = true;
+                        } else {
+                            // Option with value
+                            if current_index >= local_args.count {
+                                result.success = false;
+                                result.error_message = tprint("Option % requires a value", option.short_name);
+                                return result;
+                            }
+                            
+                            value_str := local_args[current_index];
+                            current_index += 1;
+                            
+                            if option.type_name == "string" {
+                                (cast(*string)option.value).* = value_str;
+                            } else if option.type_name == "int" || option.type_name == "s64" {
+                                value, success := string_to_int(value_str);
+                                if !success {
+                                    result.success = false;
+                                    result.error_message = tprint("Failed to parse % as int", value_str);
+                                    return result;
+                                }
+                                
+                                if option.type_name == "int" {
+                                    (cast(*int)option.value).* = value;
+                                } else { // s64
+                                    (cast(*s64)option.value).* = value;
+                                }
+                            } else if option.type_name == "float" {
+                                value, success := string_to_float(value_str);
+                                if !success {
+                                    result.success = false;
+                                    result.error_message = tprint("Failed to parse % as float", value_str);
+                                    return result;
+                                }
+                                (cast(*float)option.value).* = value;
+                            }
+                        }
+                        
+                        break;
+                    }
+                }
             }
             
+            // Only report an error if the option wasn't found in either current command options or global options
             if !option_found {
                 result.success = false;
                 result.error_message = tprint("Unknown option: %", arg);
@@ -290,6 +392,7 @@ print_help :: (command: *Command) {
         }
     }
     
+    // Print local options
     if command.options.count > 0 {
         print("\nOptions:\n");
         for opt: command.options {
@@ -297,6 +400,17 @@ print_help :: (command: *Command) {
             if opt.short_name.count > 0 print("-%, ", opt.short_name);
             print("--%\t%", opt.name, opt.description);
             // if opt.default_value != null print(" (default: %)", opt.default_value); // How to print generic default?
+            print("\n");
+        }
+    }
+    
+    // Print global options
+    if command.global_options.count > 0 {
+        print("\nGlobal Options:\n");
+        for opt: command.global_options {
+            print("  ");
+            if opt.short_name.count > 0 print("-%, ", opt.short_name);
+            print("--%\t%", opt.name, opt.description);
             print("\n");
         }
     }
