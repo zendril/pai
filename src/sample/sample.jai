@@ -116,11 +116,11 @@ main :: () {
         ctx_data := cast(*CountContext)ctx;
         count_value := ctx_data.count.*;
         
+        if ctx_data.verbose.* print("Counting with verbose mode enabled.\n");
         print("Counting to %:\n", count_value);
         for i: 1..count_value {
             print("%\n", i);
         }
-        if ctx_data.verbose.* print("Counting with verbose mode enabled.\n");
     };
     
     // Add the subcommands to the root command and propagate global options

@@ -175,13 +175,13 @@ You can use the following commands with the build script from your project's roo
 -   `jai build.jai - build`: Builds the sample program in debug mode.
 -   `jai build.jai - release`: Builds the sample program in release mode.
 
-These commands can be mixed and matched. For example, to clean and then build in release mode:
-```sh
-jai build.jai - clean release
-```
-Or to clean and build in debug mode:
+These commands can be mixed and matched. For example, to clean and then build:
 ```sh
 jai build.jai - clean build
+```
+Or to clean and build in release (optimized) mode:
+```sh
+jai build.jai - clean release
 ```
 
 ### Running the Sample Program
