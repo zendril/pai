@@ -16,28 +16,31 @@ main :: () {
     
     CountContext :: struct {
         verbose: *bool;
-        count: *int;
+        count: *s64;
     }
     
     // Define variables to store parsed values
     verbose := false;
     name: string;
-    count: int;
+    count: s64;
     
     // Define the root command
     root_cmd: Command;
     root_cmd.name = "sample";
     root_cmd.description = "A sample CLI application using the Pai library";
     
-    // Add a verbose option to the root command
+    // No need to initialize arrays - they're automatically initialized as empty
+    
+    // Add a verbose option as a global option
     verbose_option: Option;
     verbose_option.name = "verbose";
     verbose_option.short_name = "v";
     verbose_option.description = "Enable verbose output";
     verbose_option.option_type = type_of(bool);
+    verbose_option.type_name = "bool";
     verbose_option.required = false;
     verbose_option.value = *verbose;
-    array_add(*root_cmd.options, verbose_option);
+    array_add(*root_cmd.global_options, verbose_option);
     
     // Create context for the root command
     root_context := New(RootContext);
@@ -57,11 +60,14 @@ main :: () {
     greet_cmd.short_name = "g";
     greet_cmd.description = "Greet a user";
     
+    // No need to initialize arrays - they're automatically initialized as empty
+    
     // Add a name argument to the greet command
     name_arg: Argument;
     name_arg.name = "name";
     name_arg.description = "The user's name";
     name_arg.arg_type = type_of(string);
+    name_arg.type_name = "string";
     name_arg.required = true;
     name_arg.value = *name;
     array_add(*greet_cmd.arguments, name_arg);
@@ -85,13 +91,18 @@ main :: () {
     count_cmd.short_name = "c";
     count_cmd.description = "Count to a number";
     
+    // No need to initialize arrays - they're automatically initialized as empty
+    
     // Add a count argument to the count command
     count_arg: Argument;
     count_arg.name = "count";
     count_arg.description = "The number to count to";
-    count_arg.arg_type = type_of(int);
+    
+    count_arg.arg_type = type_of(s64);
+    count_arg.type_name = "s64";  // Set the type name explicitly
     count_arg.required = true;
     count_arg.value = *count;
+    
     array_add(*count_cmd.arguments, count_arg);
     
     // Create context for the count command
@@ -103,16 +114,25 @@ main :: () {
     // Define the count command's action
     count_cmd.action = (ctx: *void) {
         ctx_data := cast(*CountContext)ctx;
-        print("Counting to %:\n", ctx_data.count.*);
-        for i: 1..ctx_data.count.* {
+        count_value := ctx_data.count.*;
+        
+        if ctx_data.verbose.* print("Counting with verbose mode enabled.\n");
+        print("Counting to %:\n", count_value);
+        for i: 1..count_value {
             print("%\n", i);
         }
-        if ctx_data.verbose.* print("Counting with verbose mode enabled.\n");
     };
     
-    // Add the subcommands to the root command
+    // Add the subcommands to the root command and propagate global options
     array_add(*root_cmd.subcommands, greet_cmd);
     array_add(*root_cmd.subcommands, count_cmd);
+    
+    // Propagate global options to subcommands
+    for * subcommand: root_cmd.subcommands {
+        for option: root_cmd.global_options {
+            array_add(*subcommand.global_options, option);
+        }
+    }
     
     // Parse the command-line arguments
     result := parse_args(*root_cmd);
